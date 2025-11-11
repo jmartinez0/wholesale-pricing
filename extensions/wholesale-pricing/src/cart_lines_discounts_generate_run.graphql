@@ -1,0 +1,26 @@
+  query Input {
+    cart {
+      buyerIdentity {
+        customer {
+          hasAnyTag(tags: ["Wholesale"])
+        }
+      }
+      lines {
+        id
+        quantity
+        cost {
+          subtotalAmount {
+            amount
+          }
+        }
+        merchandise {
+          __typename
+          ... on ProductVariant {
+            metafield(namespace: "wholesale", key: "price") {
+              value
+            }
+          }
+        }
+      }
+    }
+  }

@@ -1,0 +1,33 @@
+{
+  "cart": {
+    "buyerIdentity": {
+      "customer": {
+        "tags": ["wholesale"]
+      }
+    },
+    "lines": [
+      {
+        "id": "gid://shopify/CartLine/1",
+        "quantity": 2,
+        "cost": {
+          "subtotalAmount": { "amount": "200.00" }
+        },
+        "merchandise": {
+          "metafield": {
+            "value": "{\"amount\":\"80.00\",\"currency_code\":\"USD\"}"
+          }
+        }
+      },
+      {
+        "id": "gid://shopify/CartLine/2",
+        "quantity": 1,
+        "cost": {
+          "subtotalAmount": { "amount": "50.00" }
+        },
+        "merchandise": {
+          "metafield": null
+        }
+      }
+    ]
+  }
+}

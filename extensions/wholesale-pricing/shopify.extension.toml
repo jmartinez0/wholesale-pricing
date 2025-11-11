@@ -1,0 +1,16 @@
+api_version = "2025-04"
+
+[[extensions]]
+name = "Wholesale Pricing"
+handle = "wholesale-pricing"
+type = "function"
+uid = "0a427c64-4a1a-41c7-f518-d05492f3994c91180ad4"
+description = "t:description"
+
+  [[extensions.targeting]]
+  target = "cart.lines.discounts.generate.run"
+  input_query = "src/cart_lines_discounts_generate_run.graphql"
+  export = "cart-lines-discounts-generate-run"
+
+[extensions.ui]
+handle = "discount-ui"
