@@ -1,5 +1,3 @@
-import { Outlet } from "react-router-dom";
-
 export default function PrivacyPolicy() {
   return (
     <main style={{ maxWidth: "700px", margin: "2rem auto", fontFamily: "sans-serif", lineHeight: 1.6 }}>
