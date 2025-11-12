@@ -19,6 +19,54 @@ const shopify = shopifyApp({
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
     : {}),
+
+  hooks: {
+    afterAuth: async ({ admin }) => {
+      try {
+        const definitions = [
+          {
+            name: "Wholesale Price",
+            namespace: "wholesale",
+            key: "price",
+            type: "money",
+            ownerType: "PRODUCTVARIANT",
+            access: { storefront: "PUBLIC_READ" },
+          },
+          {
+            name: "Wholesale Minimum Quantity",
+            namespace: "wholesale",
+            key: "minimum_quantity",
+            type: "number_integer",
+            ownerType: "PRODUCTVARIANT",
+            access: { storefront: "PUBLIC_READ" },
+          },
+        ];
+
+        const mutation = `
+          mutation metafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
+            metafieldDefinitionCreate(definition: $definition) {
+              createdDefinition { id name key namespace type { name } access { storefront } }
+              userErrors { field message }
+            }
+          }
+        `;
+
+        for (const def of definitions) {
+          const res = await admin.graphql(mutation, { variables: { definition: def } });
+          const json = await res.json();
+
+          const errors = json?.data?.metafieldDefinitionCreate?.userErrors || [];
+          if (errors.length > 0) {
+            console.log(`Metafield "${def.key}" setup notice:`, errors);
+          } else {
+            console.log(`Created metafield definition: ${def.key}`);
+          }
+        }
+      } catch (error) {
+        console.error("Error ensuring metafield definitions:", error);
+      }
+    },
+  },
 });
 
 export default shopify;
