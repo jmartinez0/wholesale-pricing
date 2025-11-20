@@ -23,6 +23,11 @@ const shopify = shopifyApp({
   hooks: {
     afterAuth: async ({ admin }) => {
       try {
+        /*
+        ────────────────────────────────────────────────────────────
+        1. METAFIELD DEFINITIONS
+        ────────────────────────────────────────────────────────────
+        */
         const definitions = [
           {
             name: "Wholesale Price",
@@ -57,46 +62,44 @@ const shopify = shopifyApp({
           });
           const json = await res.json();
 
-          if (json.errors) {
-            console.error("GraphQL error creating metafield:", json.errors);
-            continue;
-          }
-
           const errors = json.data.metafieldDefinitionCreate.userErrors;
           if (errors.length > 0) {
-            console.log(`Metafield "${def.key}" exists or can't be created:`, errors);
+            console.log(
+              `Metafield "${def.key}" exists or cannot be created:`,
+              errors
+            );
           } else {
             console.log(`Metafield created: ${def.key}`);
           }
         }
 
+        /*
+        ────────────────────────────────────────────────────────────
+        2. CHECK IF DISCOUNT WITH TITLE "Wholesale Pricing" EXISTS
+        ────────────────────────────────────────────────────────────
+        */
         const checkQuery = `
-            query {
-              discountNodes(query: "title:'Wholesale Pricing'", first: 5) {
-                nodes {
-                  id
-                  discount {
-                    ... on DiscountAutomaticApp {
-                      title
-                    }
+          query {
+            discountNodes(query: "title:'Wholesale Pricing'", first: 5) {
+              nodes {
+                id
+                discount {
+                  ... on DiscountAutomaticApp {
+                    title
                   }
                 }
               }
             }
+          }
         `;
 
         const checkRes = await admin.graphql(checkQuery);
         const checkJson = await checkRes.json();
 
-        if (checkJson.errors) {
-          console.error("GraphQL error checking discounts:", checkJson.errors);
-          return;
-        }
-
         const nodes = checkJson.data.discountNodes.nodes;
 
         const exists = nodes.some(
-          n => n.discount?.title === "Wholesale Discount"
+          (n) => n.discount?.title === "Wholesale Pricing"
         );
 
         if (exists) {
@@ -104,16 +107,23 @@ const shopify = shopifyApp({
           return;
         }
 
-        const startsAt = new Date().toISOString();
+        /*
+        ────────────────────────────────────────────────────────────
+        3. CREATE AUTOMATIC DISCOUNT
+        ────────────────────────────────────────────────────────────
+        */
+
+        // Prevent clock-drift failures by setting startsAt slightly in the future
+        const startsAt = new Date(Date.now() + 5000).toISOString();
 
         const createMutation = `
           mutation CreateWholesaleDiscount($startsAt: DateTime!) {
             discountAutomaticAppCreate(
               automaticAppDiscount: {
                 title: "Wholesale Pricing"
-                functionHandle: "wholesale-discount"
                 discountClasses: [PRODUCT]
                 startsAt: $startsAt
+                appliesOncePerCustomer: false
                 combinesWith: {
                   productDiscounts: false
                   orderDiscounts: false
@@ -134,35 +144,29 @@ const shopify = shopifyApp({
         `;
 
         const createRes = await admin.graphql(createMutation, {
-          variables: { startsAt }
+          variables: { startsAt },
         });
 
         const createJson = await createRes.json();
 
-        if (createJson.errors) {
-          console.error("GraphQL errors creating discount:", createJson.errors);
-          return;
-        }
-
-        const payload = createJson.data?.discountAutomaticAppCreate;
-
-        if (!payload) {
-          console.error("Unexpected response creating discount:", createJson);
-          return;
-        }
+        const payload = createJson.data.discountAutomaticAppCreate;
 
         if (payload.userErrors.length > 0) {
-          console.error("Failed to create Wholesale Pricing discount:", payload.userErrors);
+          console.error(
+            "Failed to create Wholesale Pricing discount:",
+            payload.userErrors
+          );
         } else {
-          console.log("Wholesale Pricing discount created:", payload.automaticAppDiscount);
+          console.log(
+            "Wholesale Pricing discount created:",
+            payload.automaticAppDiscount
+          );
         }
-
       } catch (err) {
         console.error("Error in afterAuth wholesale setup:", err);
       }
     },
-  }
-
+  },
 });
 
 export default shopify;
