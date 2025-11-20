@@ -23,6 +23,9 @@ const shopify = shopifyApp({
   hooks: {
     afterAuth: async ({ admin }) => {
       try {
+        /* -----------------------------------------------
+         * 1. Ensure metafield definitions
+         * --------------------------------------------- */
         const definitions = [
           {
             name: "Wholesale Price",
@@ -42,31 +45,137 @@ const shopify = shopifyApp({
           },
         ];
 
-        const mutation = `
+        const metafieldMutation = `
           mutation metafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
             metafieldDefinitionCreate(definition: $definition) {
-              createdDefinition { id name key namespace type { name } access { storefront } }
+              createdDefinition { id name key namespace }
               userErrors { field message }
             }
           }
         `;
 
         for (const def of definitions) {
-          const res = await admin.graphql(mutation, { variables: { definition: def } });
+          const res = await admin.graphql(metafieldMutation, {
+            variables: { definition: def },
+          });
           const json = await res.json();
 
-          const errors = json?.data?.metafieldDefinitionCreate?.userErrors || [];
+          if (json.errors) {
+            console.error("GraphQL error creating metafield:", json.errors);
+            continue;
+          }
+
+          const errors = json.data.metafieldDefinitionCreate.userErrors;
           if (errors.length > 0) {
-            console.log(`Metafield "${def.key}" setup notice:`, errors);
+            console.log(`Metafield "${def.key}" exists or can't be created:`, errors);
           } else {
-            console.log(`Created metafield definition: ${def.key}`);
+            console.log(`Metafield created: ${def.key}`);
           }
         }
-      } catch (error) {
-        console.error("Error ensuring metafield definitions:", error);
+
+        /* -----------------------------------------------
+         * 2. Check for wholesale discount via functionHandle
+         * --------------------------------------------- */
+        const checkQuery = `
+          query {
+            discountNodes(
+              query: "functionHandle:'wholesale-discount'"
+              first: 1
+            ) {
+              nodes {
+                id
+                discount {
+                  ... on DiscountAutomaticApp {
+                    functionHandle
+                  }
+                }
+              }
+            }
+          }
+        `;
+
+        const checkRes = await admin.graphql(checkQuery);
+        const checkJson = await checkRes.json();
+
+        if (checkJson.errors) {
+          console.error("GraphQL error checking discounts:", checkJson.errors);
+          return;
+        }
+
+        const nodes = checkJson.data.discountNodes.nodes;
+
+        const exists = nodes.some(
+          n => n.discount?.functionHandle === "wholesale-discount"
+        );
+
+        if (exists) {
+          console.log("Wholesale Pricing automatic discount already exists.");
+          return;
+        }
+
+        /* -----------------------------------------------
+         * 3. Create automatic wholesale discount
+         * --------------------------------------------- */
+        const startsAt = new Date().toISOString();
+
+        const createMutation = `
+          mutation CreateWholesaleDiscount($startsAt: DateTime!) {
+            discountAutomaticAppCreate(
+              automaticAppDiscount: {
+                title: "Wholesale Pricing"
+                functionHandle: "wholesale-discount"
+                discountClasses: [PRODUCT]
+                startsAt: $startsAt
+                combinesWith: {
+                  productDiscounts: false
+                  orderDiscounts: false
+                  shippingDiscounts: false
+                }
+              }
+            ) {
+              automaticAppDiscount {
+                id
+                title
+                functionHandle
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          }
+        `;
+
+        const createRes = await admin.graphql(createMutation, {
+          variables: { startsAt }
+        });
+
+        const createJson = await createRes.json();
+
+        if (createJson.errors) {
+          console.error("GraphQL errors creating discount:", createJson.errors);
+          return;
+        }
+
+        const payload = createJson.data?.discountAutomaticAppCreate;
+
+        if (!payload) {
+          console.error("Unexpected response creating discount:", createJson);
+          return;
+        }
+
+        if (payload.userErrors.length > 0) {
+          console.error("Failed to create Wholesale Pricing discount:", payload.userErrors);
+        } else {
+          console.log("Wholesale Pricing discount created:", payload.automaticAppDiscount);
+        }
+
+      } catch (err) {
+        console.error("Error in afterAuth wholesale setup:", err);
       }
     },
-  },
+  }
+
 });
 
 export default shopify;
