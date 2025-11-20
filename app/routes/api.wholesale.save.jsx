@@ -28,16 +28,18 @@ export async function action({ request }) {
       } else {
         const num = parseFloat(trimmedPrice);
         if (!isNaN(num)) {
+
           toSave.push({
             ownerId: variantId,
             namespace: "wholesale",
             key: "price",
-            type: "money",
+            type: "number_decimal",
             value: num.toFixed(2),
           });
         }
       }
 
+      // MIN QTY
       const trimmedQty = String(minimumQuantity ?? "").trim();
 
       if (trimmedQty === "" || trimmedQty.toLowerCase() === "null") {
@@ -62,6 +64,7 @@ export async function action({ request }) {
 
     const results = { saved: [], deleted: [], errors: [] };
 
+    /* DELETE */
     if (toDelete.length > 0) {
       const deleteMutation = `
         mutation metafieldsDelete($metafields: [MetafieldIdentifierInput!]!) {
@@ -88,6 +91,7 @@ export async function action({ request }) {
       }
     }
 
+    /* SAVE */
     if (toSave.length > 0) {
       const saveMutation = `
         mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
@@ -117,14 +121,10 @@ export async function action({ request }) {
     const success = results.errors.length === 0;
 
     return new Response(
-      JSON.stringify({
-        success,
-        ...results,
-      }),
-      {
-        headers: { "Content-Type": "application/json" },
-      }
+      JSON.stringify({ success, ...results }),
+      { headers: { "Content-Type": "application/json" } }
     );
+
   } catch (error) {
     console.error("Error saving wholesale data:", error);
 

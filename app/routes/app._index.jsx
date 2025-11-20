@@ -1,172 +1,158 @@
-import { useState, useEffect, useMemo, useRef } from "react"
-import { useAppBridge } from "@shopify/app-bridge-react"
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useAppBridge } from "@shopify/app-bridge-react";
 
 export default function Pricing() {
-  const [variants, setVariants] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [query, setQuery] = useState("")
-  const [debouncedQuery, setDebouncedQuery] = useState("")
-  const originalVariantsRef = useRef([])
+  const [variants, setVariants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const originalVariantsRef = useRef([]);
 
+  // Debounce search
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 200)
-    return () => clearTimeout(timer)
-  }, [query])
+    const timer = setTimeout(() => setDebouncedQuery(query), 200);
+    return () => clearTimeout(timer);
+  }, [query]);
 
+  // Fetch products
   useEffect(() => {
     async function fetchProducts() {
-      setLoading(true)
+      setLoading(true);
       try {
-        const res = await fetch("/api/products")
-        if (!res.ok) throw new Error(res.statusText)
-        const data = await res.json()
+        const res = await fetch("/api/products");
+        if (!res.ok) throw new Error(res.statusText);
+
+        const data = await res.json();
 
         const flattened = (data.products?.edges || []).flatMap((edge) => {
-          const product = edge.node
+          const product = edge.node;
+
           return (product.variants?.edges || []).map((variantEdge) => {
-            const v = variantEdge.node
-            let wholesaleValue = ""
-            let wholesaleMinQty = ""
+            const v = variantEdge.node;
 
-            // Parse wholesale price
-            if (v.wholesalePrice?.value) {
-              try {
-                const parsed = JSON.parse(v.wholesalePrice.value)
-                wholesaleValue = parsed.amount
-              } catch {
-                wholesaleValue = v.wholesalePrice.value
-              }
-            }
+            // number_decimal always comes as a string or null
+            let wholesaleValue = v.wholesalePrice?.value ?? "";
 
-            // Parse minimum quantity
-            if (v.wholesaleMinimumQuantity?.value) {
-              try {
-                wholesaleMinQty = parseInt(v.wholesaleMinimumQuantity.value)
-              } catch {
-                wholesaleMinQty = v.wholesaleMinimumQuantity.value
-              }
-            }
+            // number_integer always comes as a string or null
+            let wholesaleMinQty = v.wholesaleMinimumQuantity?.value ?? "";
 
             return {
               id: v.id,
               productTitle: product.title,
               variantTitle: v.title,
               price: v.price,
-              wholesalePrice: wholesaleValue,
-              wholesaleMinimumQuantity: wholesaleMinQty,
+              wholesalePrice: wholesaleValue, // simple string
+              wholesaleMinimumQuantity: wholesaleMinQty, // simple string
               imageUrl: product.featuredMedia?.image?.url || "",
-            }
-          })
-        })
+            };
+          });
+        });
 
-        setVariants(flattened)
-        originalVariantsRef.current = JSON.parse(JSON.stringify(flattened))
+        setVariants(flattened);
+        originalVariantsRef.current = JSON.parse(JSON.stringify(flattened));
       } catch (err) {
-        console.error("Error fetching products:", err)
+        console.error("Error fetching products:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    fetchProducts()
-  }, [])
+    fetchProducts();
+  }, []);
 
   const filteredVariants = useMemo(() => {
-    if (!debouncedQuery.trim()) return variants
-    const lower = debouncedQuery.toLowerCase()
+    if (!debouncedQuery.trim()) return variants;
+    const lower = debouncedQuery.toLowerCase();
+
     return variants.filter((v) =>
       [
         v.productTitle,
         v.variantTitle,
         String(v.price),
-        String(v.wholesalePrice ?? ""),
-        String(v.wholesaleMinimumQuantity ?? ""),
-      ].some((f) => f?.toLowerCase().includes(lower)),
-    )
-  }, [variants, debouncedQuery])
+        String(v.wholesalePrice),
+        String(v.wholesaleMinimumQuantity),
+      ].some((f) => f?.toLowerCase().includes(lower))
+    );
+  }, [variants, debouncedQuery]);
 
   function handlePriceChange(variantId, value) {
     setVariants((prev) =>
       prev.map((v) =>
-        v.id === variantId ? { ...v, wholesalePrice: value } : v,
-      ),
-    )
+        v.id === variantId ? { ...v, wholesalePrice: value } : v
+      )
+    );
   }
 
   function handleMinQtyChange(variantId, value) {
     setVariants((prev) =>
       prev.map((v) =>
-        v.id === variantId ? { ...v, wholesaleMinimumQuantity: value } : v,
-      ),
-    )
+        v.id === variantId ? { ...v, wholesaleMinimumQuantity: value } : v
+      )
+    );
   }
 
   function formatMoney(value) {
-    if (value === "" || value == null) return ""
-    const num = parseFloat(value)
-    if (isNaN(num)) return value
-    return num.toFixed(2)
+    if (value === "" || value == null) return "";
+    const num = parseFloat(value);
+    if (isNaN(num)) return value;
+    return num.toFixed(2);
   }
 
   function handleDiscard(e) {
-    e.preventDefault()
+    e.preventDefault();
     setVariants((prev) =>
       prev.map((v) => {
-        const orig = originalVariantsRef.current.find((o) => o.id === v.id)
+        const orig = originalVariantsRef.current.find((o) => o.id === v.id);
         return orig &&
           (v.wholesalePrice !== orig.wholesalePrice ||
             v.wholesaleMinimumQuantity !== orig.wholesaleMinimumQuantity)
           ? {
-              ...v,
-              wholesalePrice: orig.wholesalePrice,
-              wholesaleMinimumQuantity: orig.wholesaleMinimumQuantity,
-            }
-          : v
-      }),
-    )
+            ...v,
+            wholesalePrice: orig.wholesalePrice,
+            wholesaleMinimumQuantity: orig.wholesaleMinimumQuantity,
+          }
+          : v;
+      })
+    );
   }
 
   async function handleSave(e) {
-    e.preventDefault()
-    const shopify = useAppBridge()
+    e.preventDefault();
+    const shopify = useAppBridge();
 
-    const invalidVariants = []
+    const invalidVariants = [];
     const changed = variants.filter((v) => {
-      const orig = originalVariantsRef.current.find((o) => o.id === v.id)
+      const orig = originalVariantsRef.current.find((o) => o.id === v.id);
+
       const hasChanges =
         orig &&
         (v.wholesalePrice !== orig.wholesalePrice ||
-          v.wholesaleMinimumQuantity !== orig.wholesaleMinimumQuantity)
+          v.wholesaleMinimumQuantity !== orig.wholesaleMinimumQuantity);
 
-      // Validate minimum quantity before saving
       if (hasChanges && v.wholesaleMinimumQuantity !== "") {
-        const qty = parseInt(v.wholesaleMinimumQuantity, 10)
-        if (isNaN(qty) || qty < 0) {
-          invalidVariants.push(v)
-        }
+        const qty = parseInt(v.wholesaleMinimumQuantity, 10);
+        if (isNaN(qty) || qty < 0) invalidVariants.push(v);
       }
 
-      return hasChanges
-    })
+      return hasChanges;
+    });
 
     if (invalidVariants.length > 0) {
       shopify.toast.show(
-        `${invalidVariants.length} variant${
-          invalidVariants.length === 1 ? "" : "s"
-        } have invalid minimum quantities. Please enter a number.`,
-        { duration: 6000, isError: true },
-      )
-      return
+        `${invalidVariants.length} variant${invalidVariants.length === 1 ? "" : "s"} have invalid minimum quantities. Please enter a number.`,
+        { duration: 6000, isError: true }
+      );
+      return;
     }
 
-    if (changed.length === 0) return
+    if (changed.length === 0) return;
 
     if (changed.length > 25) {
-      shopify.toast.show(
-        "You can only update up to 25 variants at a time. Please save in smaller batches.",
-        { duration: 6000, isError: true },
-      )
-      return
+      shopify.toast.show("You can only update up to 25 variants at a time.", {
+        duration: 6000,
+        isError: true,
+      });
+      return;
     }
 
     try {
@@ -180,25 +166,27 @@ export default function Pricing() {
             minimumQuantity: v.wholesaleMinimumQuantity,
           })),
         }),
-      })
+      });
 
-      if (!res.ok) throw new Error(`Save failed (${res.status})`)
-      const data = await res.json()
+      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+
+      const data = await res.json();
 
       if (!data.success) {
-        console.error("Errors saving metafields:", data.errors)
-        shopify.toast.show("Some variants failed to save.", { duration: 5000 })
-        return
+        console.error("Errors saving metafields:", data.errors);
+        shopify.toast.show("Some variants failed to save.", { duration: 5000 });
+        return;
       }
 
-      originalVariantsRef.current = JSON.parse(JSON.stringify(variants))
+      originalVariantsRef.current = JSON.parse(JSON.stringify(variants));
+
       shopify.toast.show(
         `${changed.length} variant${changed.length === 1 ? "" : "s"} updated`,
-        { duration: 5000 },
-      )
+        { duration: 5000 }
+      );
     } catch (err) {
-      console.error("Error saving wholesale prices:", err)
-      shopify.toast.show("Failed to set wholesale prices.", { duration: 5000 })
+      console.error("Error saving wholesale prices:", err);
+      shopify.toast.show("Failed to set wholesale prices.", { duration: 5000 });
     }
   }
 
@@ -208,9 +196,10 @@ export default function Pricing() {
         <s-spinner accessibilityLabel="Loading" size="large-100" />
       ) : (
         <s-stack direction="block" gap="base">
-         <s-banner tone="info">
+          <s-banner tone="info">
             Wholesale pricing is only available to customers tagged 'Wholesale'.
           </s-banner>
+
           <s-text-field
             icon="search"
             placeholder="Search anything"
@@ -272,16 +261,16 @@ export default function Pricing() {
                         <s-table-cell>
                           <s-text-field
                             prefix="$"
-                            value={v.wholesalePrice ?? "-"}
+                            value={v.wholesalePrice ?? ""}
                             label=""
                             labelAccessibilityVisibility="hidden"
                             onInput={(e) =>
                               handlePriceChange(v.id, e.target.value)
                             }
                             onBlur={(e) => {
-                              const formatted = formatMoney(e.target.value)
+                              const formatted = formatMoney(e.target.value);
                               if (formatted !== e.target.value) {
-                                handlePriceChange(v.id, formatted)
+                                handlePriceChange(v.id, formatted);
                               }
                             }}
                           />
@@ -310,5 +299,5 @@ export default function Pricing() {
         </s-stack>
       )}
     </s-page>
-  )
+  );
 }

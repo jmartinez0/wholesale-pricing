@@ -23,17 +23,12 @@ const shopify = shopifyApp({
   hooks: {
     afterAuth: async ({ admin }) => {
       try {
-        /*
-        ────────────────────────────────────────────────────────────
-        1. METAFIELD DEFINITIONS
-        ────────────────────────────────────────────────────────────
-        */
         const definitions = [
           {
             name: "Wholesale Price",
             namespace: "wholesale",
             key: "price",
-            type: "money",
+            type: "number_decimal",
             ownerType: "PRODUCTVARIANT",
             access: { storefront: "PUBLIC_READ" },
           },
@@ -73,14 +68,9 @@ const shopify = shopifyApp({
           }
         }
 
-        /*
-        ────────────────────────────────────────────────────────────
-        2. CHECK IF DISCOUNT WITH TITLE "Wholesale Pricing" EXISTS
-        ────────────────────────────────────────────────────────────
-        */
         const checkQuery = `
           query {
-            discountNodes(query: "title:'Wholesale Pricing'", first: 5) {
+            discountNodes(query: "title:'Wholesale Discount'", first: 5) {
               nodes {
                 id
                 discount {
@@ -99,21 +89,14 @@ const shopify = shopifyApp({
         const nodes = checkJson.data.discountNodes.nodes;
 
         const exists = nodes.some(
-          (n) => n.discount?.title === "Wholesale Pricing"
+          (n) => n.discount?.title === "Wholesale Discount"
         );
 
         if (exists) {
-          console.log("Wholesale Pricing automatic discount already exists.");
+          console.log("Wholesale Discount automatic discount already exists.");
           return;
         }
 
-        /*
-        ────────────────────────────────────────────────────────────
-        3. CREATE AUTOMATIC DISCOUNT
-        ────────────────────────────────────────────────────────────
-        */
-
-        // Prevent clock-drift failures by setting startsAt slightly in the future
         const startsAt = new Date(Date.now() + 5000).toISOString();
 
         const createMutation = `
@@ -153,12 +136,12 @@ const shopify = shopifyApp({
 
         if (payload.userErrors.length > 0) {
           console.error(
-            "Failed to create Wholesale Pricing discount:",
+            "Failed to create Wholesale Discount:",
             payload.userErrors
           );
         } else {
           console.log(
-            "Wholesale Pricing discount created:",
+            "Wholesale Discount created:",
             payload.automaticAppDiscount
           );
         }

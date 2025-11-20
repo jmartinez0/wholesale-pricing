@@ -1,32 +1,27 @@
 export function cartLinesDiscountsGenerateRun(input) {
-  const isWholesale = input.cart?.buyerIdentity?.customer?.hasAnyTag || false
-  if (!isWholesale) return { operations: [] }
+  const isWholesale = input.cart?.buyerIdentity?.customer?.hasAnyTag || false;
+  if (!isWholesale) return { operations: [] };
 
-  const candidates = []
+  const candidates = [];
 
   for (const line of input.cart.lines) {
-    const priceMeta = line.merchandise?.wholesalePrice
-    const minQtyMeta = line.merchandise?.wholesaleMinQty
-    if (!priceMeta?.value) continue
+    const priceMeta = line.merchandise?.wholesalePrice;
+    const minQtyMeta = line.merchandise?.wholesaleMinQty;
+    if (!priceMeta?.value) continue;
 
-    let wholesale
-    try {
-      const parsed = JSON.parse(priceMeta.value)
-      wholesale = parseFloat(parsed.amount)
-    } catch {
-      wholesale = parseFloat(priceMeta.value)
-    }
-    if (isNaN(wholesale)) continue
+    const wholesale = parseFloat(priceMeta.value);
+    if (isNaN(wholesale)) continue;
 
-    const minQty = parseInt(minQtyMeta?.value ?? "1", 10)
-    const qty = line.quantity ?? 1
-    if (qty < minQty) continue
+    const minQty = parseInt(minQtyMeta?.value ?? "1", 10);
+    const qty = line.quantity ?? 1;
+    if (qty < minQty) continue;
 
-    const subtotal = parseFloat(line.cost.subtotalAmount.amount)
-    const retail = subtotal / qty
-    if (wholesale >= retail) continue
+    const subtotal = parseFloat(line.cost.subtotalAmount.amount);
+    const retail = subtotal / qty;
 
-    const discountPerItem = retail - wholesale
+    if (wholesale >= retail) continue;
+
+    const discountPerItem = retail - wholesale;
 
     candidates.push({
       message: "WHOLESALE",
@@ -37,10 +32,10 @@ export function cartLinesDiscountsGenerateRun(input) {
           appliesToEachItem: true,
         },
       },
-    })
+    });
   }
 
-  if (candidates.length === 0) return { operations: [] }
+  if (candidates.length === 0) return { operations: [] };
 
   return {
     operations: [
@@ -51,5 +46,5 @@ export function cartLinesDiscountsGenerateRun(input) {
         },
       },
     ],
-  }
+  };
 }
