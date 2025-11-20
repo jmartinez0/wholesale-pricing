@@ -208,6 +208,9 @@ export default function Pricing() {
         <s-spinner accessibilityLabel="Loading" size="large-100" />
       ) : (
         <s-stack direction="block" gap="base">
+         <s-banner tone="info">
+            Wholesale pricing is only available to customers tagged 'Wholesale'.
+          </s-banner>
           <s-text-field
             icon="search"
             placeholder="Search anything"
