@@ -30,7 +30,7 @@ const shopify = shopifyApp({
             key: "price",
             type: "number_decimal",
             ownerType: "PRODUCTVARIANT",
-            access: { storefront: "PUBLIC_READ" },
+            access: { admin: "MERCHANT_READ", storefront: "PUBLIC_READ" },
           },
           {
             name: "Wholesale Minimum Quantity",
@@ -38,7 +38,7 @@ const shopify = shopifyApp({
             key: "minimum_quantity",
             type: "number_integer",
             ownerType: "PRODUCTVARIANT",
-            access: { storefront: "PUBLIC_READ" },
+            access: { admin: "MERCHANT_READ", storefront: "PUBLIC_READ" },
           },
         ];
 

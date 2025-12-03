@@ -197,7 +197,7 @@ export default function Pricing() {
       ) : (
         <s-stack direction="block" gap="base">
           <s-banner tone="info">
-            Wholesale pricing is only available to customers tagged 'Wholesale'.
+            Wholesale pricing is only available to customers tagged Wholesale.
           </s-banner>
 
           <s-text-field
