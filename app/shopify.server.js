@@ -26,19 +26,19 @@ const shopify = shopifyApp({
         const definitions = [
           {
             name: "Wholesale Price",
-            namespace: "$app:wholesale",
+            namespace: "wholesale",
             key: "price",
             type: "number_decimal",
             ownerType: "PRODUCTVARIANT",
-            access: { admin: "MERCHANT_READ", storefront: "PUBLIC_READ" },
+            access: { admin: "MERCHANT_READ_WRITE", storefront: "PUBLIC_READ" },
           },
           {
             name: "Wholesale Minimum Quantity",
-            namespace: "$app:wholesale",
+            namespace: "wholesale",
             key: "minimum_quantity",
             type: "number_integer",
             ownerType: "PRODUCTVARIANT",
-            access: { admin: "MERCHANT_READ", storefront: "PUBLIC_READ" },
+            access: { admin: "MERCHANT_READ_WRITE", storefront: "PUBLIC_READ" },
           },
         ];
 
