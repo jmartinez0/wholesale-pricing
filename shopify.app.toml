@@ -1,8 +1,9 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "0a55548fb1cb44b696373ab33f3ab19f"
-name = "JM Wholesale"
-application_url = "https://wholesale-pricing-ten.vercel.app"
+client_id = "2db7b2019f681f04cbe4a694b70550ba"
+name = "Wholesale"
+handle = "wholesale"
+application_url = "https://jm-wholesale.vercel.app"
 embedded = true
 
 [build]
@@ -28,4 +29,4 @@ api_version = "2026-01"
 scopes = "write_products, write_discounts, read_discounts"
 
 [auth]
-redirect_urls = [ "https://wholesale-pricing-ten.vercel.app/auth/callback" ]
+redirect_urls = [ "https://jm-wholesale.vercel.app/auth/callback" ]
