@@ -68,8 +68,7 @@ export default function Requests() {
                   <s-table-cell>Company Name</s-table-cell>
                   <s-table-cell>000-000-0000</s-table-cell>
                   <s-table-cell>
-                    Hi, I would like to request wholesale access for Company
-                    Name.
+                    Hi, I would like to request wholesale access for your company.
                   </s-table-cell>
                   <s-table-cell>
                     <s-badge tone="caution">Unreviewed</s-badge>

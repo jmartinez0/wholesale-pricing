@@ -5,7 +5,7 @@ export async function loader({ request }) {
 
   const response = await admin.graphql(
     `#graphql
-    {
+    query VariantPricingWithMedia {
       products(first: 250) {
         edges {
           node {
@@ -26,6 +26,16 @@ export async function loader({ request }) {
                   title
                   sku
                   price
+                  media(first: 1) {
+                    nodes {
+                      ... on MediaImage {
+                        id
+                        image {
+                          url
+                        }
+                      }
+                    }
+                  }
                   wholesalePrice: metafield(namespace: "wholesale", key: "price") {
                     value
                   }
@@ -39,7 +49,7 @@ export async function loader({ request }) {
         }
       }
     }
-    `,
+    `
   );
 
   const responseJson = await response.json();

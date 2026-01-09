@@ -57,7 +57,7 @@ const shopify = shopifyApp({
           });
           const json = await res.json();
 
-          const errors = json.data.metafieldDefinitionCreate.userErrors;
+          const errors = json?.data?.metafieldDefinitionCreate?.userErrors ?? [];
           if (errors.length > 0) {
             console.log(
               `Metafield "${def.key}" exists or cannot be created:`,
@@ -74,8 +74,10 @@ const shopify = shopifyApp({
               nodes {
                 id
                 discount {
+                  __typename
                   ... on DiscountAutomaticApp {
                     title
+                    status
                   }
                 }
               }
@@ -86,8 +88,14 @@ const shopify = shopifyApp({
         const checkRes = await admin.graphql(checkQuery);
         const checkJson = await checkRes.json();
 
-        const nodes = checkJson.data.discountNodes.nodes;
+        if (checkJson.errors?.length) {
+          console.error(
+            "Error querying for existing Wholesale Discount:",
+            checkJson.errors
+          );
+        }
 
+        const nodes = checkJson?.data?.discountNodes?.nodes ?? [];
         const exists = nodes.some(
           (n) => n.discount?.title === "Wholesale Discount"
         );
@@ -97,26 +105,17 @@ const shopify = shopifyApp({
           return;
         }
 
-        const startsAt = new Date(Date.now() + 5000).toISOString();
+        const FUNCTION_HANDLE = "wholesale-discount";
 
         const createMutation = `
-          mutation CreateWholesaleDiscount($startsAt: DateTime!) {
-            discountAutomaticAppCreate(
-              automaticAppDiscount: {
-                title: "Wholesale Discount"
-                functionHandle: "wholesale-discount"
-                discountClasses: [PRODUCT]
-                startsAt: $startsAt
-                combinesWith: {
-                  productDiscounts: false
-                  orderDiscounts: false
-                  shippingDiscounts: false
-                }
-              }
-            ) {
+          mutation discountAutomaticAppCreate(
+            $automaticAppDiscount: DiscountAutomaticAppInput!
+          ) {
+            discountAutomaticAppCreate(automaticAppDiscount: $automaticAppDiscount) {
               automaticAppDiscount {
                 discountId
                 title
+                status
               }
               userErrors {
                 field
@@ -126,22 +125,54 @@ const shopify = shopifyApp({
           }
         `;
 
+        const startsAt = new Date(Date.now() + 5000).toISOString();
+
+        const automaticAppDiscount = {
+          title: "Wholesale Discount",
+          functionHandle: FUNCTION_HANDLE,
+          discountClasses: ["PRODUCT"],
+          startsAt,
+          combinesWith: {
+            productDiscounts: false,
+            orderDiscounts: false,
+            shippingDiscounts: false,
+          },
+        };
+
         const createRes = await admin.graphql(createMutation, {
-          variables: { startsAt },
+          variables: { automaticAppDiscount },
         });
 
         const createJson = await createRes.json();
 
-        const payload = createJson.data.discountAutomaticAppCreate;
+        console.dir(createJson, { depth: null });
+
+        if (createJson.errors?.length) {
+          console.error(
+            "GraphQL-level errors from discountAutomaticAppCreate:",
+            createJson.errors
+          );
+          return;
+        }
+
+        const payload = createJson.data?.discountAutomaticAppCreate;
+
+        if (!payload) {
+          console.error(
+            "discountAutomaticAppCreate returned no data. Full response:",
+            createJson
+          );
+          return;
+        }
 
         if (payload.userErrors.length > 0) {
           console.error(
-            "Failed to create Wholesale Discount:",
+            "Failed to create Wholesale Discount (userErrors):",
             payload.userErrors
           );
         } else {
           console.log(
-            "Wholesale Discount created:",
+            "Wholesale Discount created successfully:",
             payload.automaticAppDiscount
           );
         }
